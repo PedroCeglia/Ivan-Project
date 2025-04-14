@@ -1,0 +1,290 @@
+{
+  "name": "Recuperando Audio e Video",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1i3BU9ihzOfRyyC3F00elg0Evkbod0fgl",
+          "mode": "id"
+        },
+        "event": "folderUpdated"
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ba8a4744-63e6-4ee8-9db3-a5450d20784f",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jTjXUTfmZUuIYvp2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=\"{{ $json.id }}\" in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        220,
+        0
+      ],
+      "id": "a9f2e83f-6219-4927-8aa6-05980f9943c9",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jTjXUTfmZUuIYvp2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "id": "b88d4091-adbc-482b-8518-765aa568ed93",
+      "name": "Google Drive1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jTjXUTfmZUuIYvp2",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f59dfdf-3a75-47e4-a219-4c099347b9d2",
+              "name": "caminho",
+              "value": "=/home/node/.n8n/binaryData/{{ $binary.data.id.split(\"filesystem-v2:\")[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "be7dda09-c73c-48bc-ad56-a1705b6110b0",
+              "name": "ext",
+              "value": "={{$binary.data.fileExtension}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        660,
+        0
+      ],
+      "id": "d1ec2721-c81b-452f-a102-af606fbed6e0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=caminho"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "788f4135-f72d-475b-94ea-da060f362825",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "command": "rm -f /tmp/*"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "7082e22e-0a36-468d-864f-bf0de0b99760",
+      "name": "Remove All From tmp"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i {{$('Aggregate').item.json.caminho[0]}} -i {{ $('Aggregate').item.json.caminho[1] }} -c:v copy -map 0:v -map 1:a -y /tmp/output.mp4"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "2ba50001-d4c2-40d8-8697-7289eb1a6f49",
+      "name": "Concatenar Audio + Video"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i \"/tmp/output.mp4\" -c copy -map 0 -segment_time 2000 -f segment \"/tmp/output_%03d.mp4\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "6a51fdbf-c80a-4b02-9aca-7b7745da1aaa",
+      "name": "Separar em Sub Chuncks"
+    },
+    {
+      "parameters": {
+        "workflowId": "dOYIFUkn0fzHVYdP",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "d54832a5-befd-46cb-9293-29fc8ab55192",
+      "name": "Execute Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Google Drive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Remove All From tmp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove All From tmp": {
+      "main": [
+        [
+          {
+            "node": "Concatenar Audio + Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concatenar Audio + Video": {
+      "main": [
+        [
+          {
+            "node": "Separar em Sub Chuncks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar em Sub Chuncks": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "341f4e07-20bc-46e3-9421-bae18a937ad7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e43c09c935ffd7091acb56f1e60b09e711e9aebe66d7e71c19436437da927639"
+  },
+  "id": "VtOXQSFxkTMeM8wL",
+  "tags": []
+}
